@@ -5,7 +5,7 @@ import Navbar from "./components/Navbar";
 
 const inter = Inter({ 
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-sans",
 });
 
 const display = Playfair_Display({

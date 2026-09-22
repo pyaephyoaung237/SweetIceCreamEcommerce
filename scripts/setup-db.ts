@@ -5,7 +5,7 @@
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
-import { Client } from "pg";
+import { Client } from "../node_modules/@types/pg";
 import bcrypt from "bcryptjs";
 
 dotenv.config({ path: ".env.local" });
