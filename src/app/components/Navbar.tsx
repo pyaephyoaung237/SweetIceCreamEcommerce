@@ -1,21 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+interface UserSession {
+  name: string;
+  email: string;
+}
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [user, setUser] = useState<UserSession | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Fetch current session data when navbar loads
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/auth/me");
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data.user);
+        }
+      } catch (err) {
+        console.error("Failed to fetch session", err);
+      }
+    }
+    checkAuth();
+  }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+      setDropdownOpen(false);
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+  };
 
   return (
-    <header className="fixed top-4 left-0 right-0 z-50 px-4 ">
+    <header className="fixed top-4 left-0 right-0 z-50 px-4">
       <div className="mx-auto flex max-w-5xl items-center justify-between rounded-full bg-white/90 px-6 py-3 shadow-lg backdrop-blur-md border border-pink-100">
         
         {/* Brand / Logo */}
         <Link href="/" className="text-xl font-bold tracking-tight text-pink-600 flex items-center gap-2">
-          🍦 <span className="text-gray-900 font-extrabold">SweetIce</span>
+          🍦 <span className="text-gray-900 font-extrabold font-display">SweetIce</span>
         </Link>
 
-        {/* Desktop Navigation Links (Hidden on small screens) */}
+        {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-700">
           <Link href="/" className="hover:text-pink-600 transition-colors">Home</Link>
           <Link href="/products" className="hover:text-pink-600 transition-colors">Product</Link>
@@ -26,15 +75,62 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center space-x-3">
-          {/* Log in Button */}
-          <Link 
-            href="/login" 
-            className="rounded-full bg-pink-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 transition-all"
-          >
-            Log in
-          </Link>
+          {user ? (
+            /* Logged-in User Dropdown */
+            <div className="relative" ref={dropdownRef}>
+              <button 
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex items-center gap-2 rounded-full bg-pink-50 px-4 py-1.5 border border-pink-200 text-xs font-bold text-pink-700 hover:bg-pink-100 transition-all focus:outline-none"
+              >
+                <div className="h-6 w-6 rounded-full bg-pink-600 text-white flex items-center justify-center text-[10px]">
+                  {user.name ? user.name.trim().charAt(0).toUpperCase() : "U"}
+                </div>
+                <span>{user.name}</span>
+                <svg className="h-3 w-3 text-pink-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-          {/* Mobile Hamburger Button (Only visible on mobile) */}
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-pink-100 bg-white py-2 shadow-xl shadow-pink-500/10 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-xs font-bold text-gray-900 truncate">{user.name}</p>
+                    <p className="text-[10px] text-gray-500 truncate">{user.email}</p>
+                  </div>
+                  <Link 
+                    href="/favourites" 
+                    onClick={() => setDropdownOpen(false)}
+                    className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-all"
+                  >
+                    Favourite
+                  </Link>
+                  <Link 
+                    href="/change-password" 
+                    onClick={() => setDropdownOpen(false)}
+                    className="block px-4 py-2.5 text-xs font-medium text-gray-700 hover:bg-pink-50 hover:text-pink-600 transition-all"
+                  >
+                    Change Password
+                  </Link>
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-all"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Log in Button */
+            <Link 
+              href="/login" 
+              className="rounded-full bg-pink-600 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-700 transition-all"
+            >
+              Log in
+            </Link>
+          )}
+
+          {/* Mobile Hamburger Button */}
           <button 
             onClick={() => setIsOpen(!isOpen)}
             className="md:hidden rounded-full p-2 text-gray-700 hover:bg-pink-50 focus:outline-none"

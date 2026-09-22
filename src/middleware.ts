@@ -1,10 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-import { SESSION_COOKIE, authSecret } from "@/lib/config";
+
+// Helper function for your auth secret
+const authSecret = () => new TextEncoder().encode(process.env.JWT_SECRET || "super-secret-key-change-me");
 
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  // Use the exact cookie name "token"
+  const token = req.cookies.get("token")?.value;
 
   let role: string | null = null;
   if (token) {

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
-import Navbar from "./components/Navbar";
+import ClientNavbarWrapper from "./components/ClientNavbarWrapper"; // or conditionally check
 
-const inter = Inter({ 
+const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
 });
@@ -25,8 +25,8 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${display.variable}`}>
-      <body className="font-sans antialiased bg-gradient-to-b from-pink-50/50 via-white to-pink-50/30 text-gray-900 pt-24">
-        <Navbar />
+      <body className="font-sans antialiased bg-gradient-to-b from-pink-50/50 via-white to-pink-50/30 text-gray-900">
+        <ClientNavbarWrapper />
         <main>{children}</main>
       </body>
     </html>

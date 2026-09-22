@@ -1,4 +1,4 @@
-import { Pool, types } from "../../node_modules/@types/pg";
+import { Pool, types } from "pg";
 
 // NUMERIC -> number, BIGINT (COUNT/SUM) -> number
 types.setTypeParser(1700, (v) => parseFloat(v));
