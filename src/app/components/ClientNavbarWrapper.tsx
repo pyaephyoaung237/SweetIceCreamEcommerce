@@ -12,7 +12,7 @@ export default function ClientNavbarWrapper() {
 
   return (
     <div className="pt-24"> {/* This pushes content down on non-admin/non-login pages */}
-      <Navbar />
+      <Navbar/>
     </div>
   );
 }

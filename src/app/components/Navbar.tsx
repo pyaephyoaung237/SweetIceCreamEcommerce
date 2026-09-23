@@ -1,15 +1,20 @@
-"use client";
+'use client';
 
-import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface UserSession {
   name: string;
   email: string;
 }
 
-export default function Navbar() {
+interface NavbarProps {
+  cartCount: number;
+  onOpenCart: () => void;
+}
+
+export default function Navbar({ cartCount, onOpenCart }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [user, setUser] = useState<UserSession | null>(null);
@@ -20,13 +25,13 @@ export default function Navbar() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        const res = await fetch("/api/auth/me");
+        const res = await fetch('/api/auth/me');
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
         }
       } catch (err) {
-        console.error("Failed to fetch session", err);
+        console.error('Failed to fetch session', err);
       }
     }
     checkAuth();
@@ -39,19 +44,19 @@ export default function Navbar() {
         setDropdownOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch('/api/auth/logout', { method: 'POST' });
       setUser(null);
       setDropdownOpen(false);
-      router.push("/login");
+      router.push('/login');
       router.refresh();
     } catch (err) {
-      console.error("Logout failed", err);
+      console.error('Logout failed', err);
     }
   };
 
@@ -75,6 +80,23 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center space-x-3">
+          
+          {/* Cart Icon Button */}
+          <button
+            onClick={onOpenCart}
+            className="relative p-2.5 rounded-full bg-pink-50 text-pink-600 hover:bg-pink-100 transition-all border border-pink-200 flex items-center justify-center"
+            aria-label="Shopping Cart"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-pink-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center shadow-md border-2 border-white">
+                {cartCount}
+              </span>
+            )}
+          </button>
+
           {user ? (
             /* Logged-in User Dropdown */
             <div className="relative" ref={dropdownRef}>

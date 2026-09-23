@@ -20,8 +20,14 @@ export async function POST(request: Request) {
     }
 
     // 2. Check if user already exists with this email
+    // Note: If your @/lib/db helper returns an object like { rows: [...] }, 
+    // make sure to change 'existingUsers' to 'existingUsers.rows' depending on your setup.
     const existingUsers = await query("SELECT id FROM users WHERE email = $1", [email]);
-    if (existingUsers.length > 0) {
+    
+    // Safety check for standard pg pool vs custom helper wrappers
+    const userRows = Array.isArray(existingUsers) ? existingUsers : existingUsers?.rows || [];
+
+    if (userRows.length > 0) {
       return NextResponse.json(
         { error: "An account with this email already exists." },
         { status: 409 }
@@ -44,7 +50,8 @@ export async function POST(request: Request) {
       [name, email, phone, password_hash, role, branch_id, status]
     );
 
-    const newUser = result[0];
+    const insertedRows = Array.isArray(result) ? result : result?.rows || [];
+    const newUser = insertedRows[0];
 
     return NextResponse.json(
       { 
@@ -55,10 +62,11 @@ export async function POST(request: Request) {
       { status: 201 }
     );
 
-  } catch (error) {
-    console.error("Signup API internal error:", error);
+  } catch (error: any) {
+    // Detailed error logging to see the exact cause in your terminal console
+    console.error("Signup API internal error details:", error.message || error);
     return NextResponse.json(
-      { error: "Internal server error. Please try again later." },
+      { error: error.message || "Internal server error. Please try again later." },
       { status: 500 }
     );
   }

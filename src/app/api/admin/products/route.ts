@@ -4,6 +4,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
 
+// --- GET: Fetch Products with Category Names ---
 export async function GET() {
   try {
     const products = await query(`
@@ -13,7 +14,6 @@ export async function GET() {
       ORDER BY p.created_at DESC
     `);
     
-    // Handle whether query returns array directly or { rows: [...] }
     const rows = Array.isArray(products) ? products : products.rows || [];
     return NextResponse.json({ success: true, products: rows });
   } catch (error: any) {
@@ -22,6 +22,7 @@ export async function GET() {
   }
 }
 
+// --- POST: Create Product ---
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -37,8 +38,6 @@ export async function POST(request: Request) {
     }
 
     let imageUrl = null;
-
-    // Handle image file upload safely
     if (imageFile && imageFile.size > 0) {
       const bytes = await imageFile.arrayBuffer();
       const buffer = Buffer.from(bytes);
@@ -71,12 +70,70 @@ export async function POST(request: Request) {
       ]
     );
 
-    // Safely extract the newly created product row
     const newProduct = Array.isArray(dbResult) ? dbResult[0] : dbResult?.rows?.[0];
-
     return NextResponse.json({ success: true, product: newProduct }, { status: 201 });
   } catch (error: any) {
-    console.error(" DETAILED DATABASE ERROR:", error);
+    console.error("Failed to create product:", error);
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+  }
+}
+
+// --- PUT: Update Product ---
+export async function PUT(request: Request) {
+  try {
+    const formData = await request.formData();
+    const id = formData.get("id");
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const price = formData.get("price") as string;
+    const category_id = formData.get("category_id") as string;
+    const status = formData.get("status") as string;
+    const imageFile = formData.get("image") as File | null;
+
+    let imageUrl = formData.get("existing_image") as string;
+    if (imageFile && imageFile.size > 0) {
+      const bytes = await imageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      const filename = `${Date.now()}-${imageFile.name.replace(/\s/g, "_")}`;
+      const uploadDir = path.join(process.cwd(), "public", "uploads");
+      if (!existsSync(uploadDir)) await mkdir(uploadDir, { recursive: true });
+      await writeFile(path.join(uploadDir, filename), buffer);
+      imageUrl = `/uploads/${filename}`;
+    }
+
+    const dbResult = await query(
+      `UPDATE products SET name = $1, description = $2, price = $3, category_id = $4, status = $5, image_url = $6 WHERE id = $7 RETURNING *`,
+      [
+        name, 
+        description || "", 
+        parseFloat(price), 
+        category_id ? parseInt(category_id) : null, 
+        status, 
+        imageUrl, 
+        id
+      ]
+    );
+
+    const updatedProduct = Array.isArray(dbResult) ? dbResult[0] : dbResult?.rows?.[0];
+    return NextResponse.json({ success: true, product: updatedProduct });
+  } catch (error: any) {
+    console.error("Failed to update product:", error);
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+  }
+}
+
+// --- DELETE: Delete Product ---
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) return NextResponse.json({ error: "Product ID required" }, { status: 400 });
+
+    await query(`DELETE FROM products WHERE id = $1`, [id]);
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error("Failed to delete product:", error);
     return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
   }
 }

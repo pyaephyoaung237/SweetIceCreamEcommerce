@@ -29,16 +29,22 @@ INSERT INTO branches (id, name, slug, city, address, phone, status) VALUES
 (2, 'Ice Cream North', 'north', 'Mandalay', 'Chan Mya Thar Zi Township', '09987654321', 'active');
 
 -- =========================================================
--- 2. SEED USERS (Admin, Branch Staff, and Customer)
--- Role constraints: 'admin', 'branch', 'user'
+-- 2. SEED USERS 
+-- Role constraints: 'admin', 'user'
 -- =========================================================
-INSERT INTO users (name, email, phone, password_hash, role, branch_id, status) VALUES 
-('System Admin', 'admin@gmail.com', '09911111111', crypt('admin123', gen_salt('bf')), 'admin', NULL, 'active'),
-('Central Branch Manager', 'branch1@gmail.com', '09922222222', crypt('admin123', gen_salt('bf')), 'branch', 1, 'active'),
-('Test Customer', 'customer@gmail.com', '09933333333', crypt('admin123', gen_salt('bf')), 'user', NULL, 'active');
+INSERT INTO users (id, name, email, phone, password_hash, role, status) VALUES 
+(1, 'System Admin', 'admin@gmail.com', '09911111111', crypt('admin123', gen_salt('bf')), 'admin', 'active'),
+(2, 'Central Branch Manager', 'branch1@gmail.com', '09922222222', crypt('admin123', gen_salt('bf')), 'user', 'active'),
+(3, 'Test Customer', 'customer@gmail.com', '09933333333', crypt('admin123', gen_salt('bf')), 'user', 'active');
 
 -- =========================================================
--- 3. SEED CATEGORIES
+-- 3. SEED EMPLOYEES (Assigns branch1@gmail.com as Manager of Branch 1)
+-- =========================================================
+INSERT INTO employees (user_id, branch_id, position, base_salary, status) VALUES 
+(2, 1, 'Branch Manager', 500000.00, 'active');
+
+-- =========================================================
+-- 4. SEED CATEGORIES
 -- =========================================================
 INSERT INTO categories (id, name, slug, description, status) VALUES 
 (1, 'Scoops', 'scoops', 'Classic single and double ice cream scoops', 'active'),
@@ -46,7 +52,7 @@ INSERT INTO categories (id, name, slug, description, status) VALUES
 (3, 'Milkshakes', 'milkshakes', 'Creamy blended ice cream drinks', 'active');
 
 -- =========================================================
--- 4. SEED PRODUCTS
+-- 5. SEED PRODUCTS
 -- =========================================================
 INSERT INTO products (id, name, slug, description, price, discount_percent, category_id, status) VALUES 
 (1, 'Vanilla Bean Scoop', 'vanilla-bean-scoop', 'Rich natural vanilla bean ice cream', 3500.00, 0, 1, 'available'),
@@ -54,7 +60,7 @@ INSERT INTO products (id, name, slug, description, price, discount_percent, cate
 (3, 'Strawberry Milkshake', 'strawberry-milkshake', 'Fresh strawberry blended milkshake', 4500.00, 0, 3, 'available');
 
 -- =========================================================
--- 5. SEED BRANCH PRODUCTS (Stock allocation per branch)
+-- 6. SEED BRANCH PRODUCTS (Stock allocation per branch)
 -- =========================================================
 INSERT INTO branch_products (branch_id, product_id, stock, low_stock_threshold, price, status) VALUES 
 (1, 1, 50, 5, 3500.00, 'available'),
