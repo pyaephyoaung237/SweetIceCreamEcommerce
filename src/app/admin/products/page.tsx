@@ -7,6 +7,7 @@ interface Product {
   name: string;
   description: string;
   price: number;
+  discount_percent: number;
   category_id: number;
   category_name: string;
   status: string;
@@ -19,6 +20,17 @@ interface Category {
   description?: string;
   status?: string;
 }
+
+const money = (n: number) => `${Math.round(n).toLocaleString()} MMK`;
+const finalPrice = (p: Product) => Number(p.price) * (1 - (Number(p.discount_percent) || 0) / 100);
+
+const emptyForm = { name: "", description: "", price: "", discount_percent: "0", category_id: "", status: "available" };
+
+const statusStyle: Record<string, string> = {
+  available: "bg-green-100 text-green-700",
+  unavailable: "bg-red-100 text-red-700",
+  hidden: "bg-gray-100 text-gray-600",
+};
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,13 +58,7 @@ export default function AdminProductsPage() {
   const [error, setError] = useState("");
 
   // Product Form State
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    price: "",
-    category_id: "",
-    status: "available",
-  });
+  const [formData, setFormData] = useState(emptyForm);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -88,6 +94,11 @@ export default function AdminProductsPage() {
   const currentProducts = Array.isArray(products) ? products.slice(indexOfFirstItem, indexOfLastItem) : [];
   const totalPages = Math.ceil((products?.length || 0) / itemsPerPage);
 
+  // Live price preview inside the form
+  const previewPrice = Number(formData.price) || 0;
+  const previewDiscount = Math.min(90, Math.max(0, Number(formData.discount_percent) || 0));
+  const previewFinal = previewPrice * (1 - previewDiscount / 100);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -106,11 +117,12 @@ export default function AdminProductsPage() {
       data.append("name", formData.name);
       data.append("description", formData.description);
       data.append("price", formData.price);
+      data.append("discount_percent", formData.discount_percent || "0");
       data.append("category_id", formData.category_id);
       data.append("status", formData.status);
       if (selectedImage) data.append("image", selectedImage);
 
-      let url = "/api/admin/products";
+      const url = "/api/admin/products";
       let method = "POST";
 
       if (editingProduct) {
@@ -142,7 +154,7 @@ export default function AdminProductsPage() {
       data.append("name", categoryName);
       data.append("description", categoryDesc);
 
-      let url = "/api/admin/categories";
+      const url = "/api/admin/categories";
       let method = "POST";
 
       if (editingCategory) {
@@ -167,14 +179,17 @@ export default function AdminProductsPage() {
   };
 
   const openEditProduct = (p: Product) => {
+    setError("");
     setEditingProduct(p);
     setFormData({
       name: p.name,
       description: p.description || "",
       price: p.price.toString(),
+      discount_percent: String(p.discount_percent ?? 0),
       category_id: p.category_id ? p.category_id.toString() : "",
       status: p.status,
     });
+    setSelectedImage(null);
     setImagePreview(p.image_url || null);
     setIsProductModalOpen(true);
   };
@@ -182,9 +197,10 @@ export default function AdminProductsPage() {
   const closeProductModal = () => {
     setIsProductModalOpen(false);
     setEditingProduct(null);
-    setFormData({ name: "", description: "", price: "", category_id: "", status: "available" });
+    setFormData(emptyForm);
     setSelectedImage(null);
     setImagePreview(null);
+    setError("");
   };
 
   const handleDeleteProduct = (id: number) => {
@@ -223,14 +239,18 @@ export default function AdminProductsPage() {
 
   if (loading) return <p className="text-pink-600 font-medium p-6">Loading product catalog...</p>;
 
+  const inputCls = "w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20";
+  const labelCls = "block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5";
+
   return (
     <div>
       {/* Header Actions */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Product Management</h1>
         <div className="flex gap-3">
           <button
             onClick={() => {
+              setError("");
               setCategoryViewMode("add");
               setCategoryName("");
               setCategoryDesc("");
@@ -239,7 +259,7 @@ export default function AdminProductsPage() {
             }}
             className="bg-white border border-pink-200 hover:bg-pink-50 text-pink-700 font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all text-xs uppercase tracking-wider cursor-pointer"
           >
-            📂 Categories
+          Add Categories
           </button>
           <button
             onClick={() => {
@@ -248,19 +268,19 @@ export default function AdminProductsPage() {
             }}
             className="bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-700 hover:to-rose-600 text-white font-bold py-2.5 px-5 rounded-xl shadow-md shadow-pink-500/25 transition-all text-xs uppercase tracking-wider cursor-pointer"
           >
-            + Add Product
+             Add Product
           </button>
         </div>
       </div>
 
       {/* Products Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-x-auto">
+        <table className="w-full min-w-[720px] text-left border-collapse">
           <thead>
             <tr className="bg-pink-50 text-pink-800 text-xs uppercase font-bold">
               <th className="p-4">Product Name</th>
               <th className="p-4">Category</th>
-              <th className="p-4">Base Price</th>
+              <th className="p-4">Price</th>
               <th className="p-4">Status</th>
               <th className="p-4 text-right">Actions</th>
             </tr>
@@ -268,22 +288,35 @@ export default function AdminProductsPage() {
           <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
             {currentProducts.map((p) => (
               <tr key={p.id} className="hover:bg-pink-50/50 transition-colors">
-                <td className="p-4 font-semibold text-gray-900 flex items-center gap-3">
-                  {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="w-9 h-9 rounded-lg object-cover border border-pink-100 shadow-sm" />
-                  ) : (
-                    <div className="w-9 h-9 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center text-xs">🍦</div>
-                  )}
-                  {p.name}
+                <td className="p-4 font-semibold text-gray-900">
+                  <div className="flex items-center gap-3">
+                    {p.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_url} alt={p.name} className="w-9 h-9 rounded-lg object-cover border border-pink-100 shadow-sm" />
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center text-xs">🍦</div>
+                    )}
+                    {p.name}
+                  </div>
                 </td>
                 <td className="p-4">{p.category_name || "Uncategorized"}</td>
-                <td className="p-4">${Number(p.price).toFixed(2)}</td>
                 <td className="p-4">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${p.status === "available" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {p.discount_percent > 0 ? (
+                    <div className="leading-tight">
+                      <span className="font-bold text-pink-600">{money(finalPrice(p))}</span>
+                      <span className="ml-2 text-xs text-gray-400 line-through">{money(Number(p.price))}</span>
+                      <span className="ml-2 text-[10px] font-bold text-white bg-pink-600 rounded-full px-2 py-0.5">-{p.discount_percent}%</span>
+                    </div>
+                  ) : (
+                    money(Number(p.price))
+                  )}
+                </td>
+                <td className="p-4">
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusStyle[p.status] || "bg-gray-100 text-gray-600"}`}>
                     {p.status}
                   </span>
                 </td>
-                <td className="p-4 text-right space-x-2">
+                <td className="p-4 text-right space-x-2 whitespace-nowrap">
                   <button onClick={() => openEditProduct(p)} className="text-xs font-bold text-pink-600 hover:text-pink-800 bg-pink-50 hover:bg-pink-100 px-3 py-1.5 rounded-lg transition-all">
                     Edit
                   </button>
@@ -338,18 +371,39 @@ export default function AdminProductsPage() {
               {error && <div className="p-3 text-xs font-bold text-red-600 bg-red-50 border border-red-100 rounded-xl">{error}</div>}
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Product Name</label>
-                <input type="text" required placeholder="e.g. Mint Choc Chip Scoop" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20" />
+                <label className={labelCls}>Product Name</label>
+                <input type="text" required placeholder="e.g. Mint Choc Chip Scoop" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className={inputCls} />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Price ($)</label>
-                  <input type="number" step="0.01" required placeholder="4.99" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20" />
+                  <label className={labelCls}>Price (MMK)</label>
+                  <input type="number" step="0.01" min="0" required placeholder="5000" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20">
+                  <label className={labelCls}>Discount (%)</label>
+                  <input type="number" step="1" min="0" max="90" placeholder="0" value={formData.discount_percent} onChange={(e) => setFormData({ ...formData, discount_percent: e.target.value })} className={inputCls} />
+                </div>
+              </div>
+
+              {previewDiscount > 0 && previewPrice > 0 && (
+                <p className="text-xs text-gray-500 -mt-2">
+                  Customers will pay <span className="font-bold text-pink-600">{money(previewFinal)}</span>{" "}
+                  <span className="line-through text-gray-400">{money(previewPrice)}</span>
+                </p>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Category</label>
+                  <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className={inputCls}>
+                    <option value="">Select Category</option>
+                    {Array.isArray(categories) && categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Status</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className={inputCls}>
                     <option value="available">Available</option>
                     <option value="unavailable">Unavailable</option>
                     <option value="hidden">Hidden</option>
@@ -358,24 +412,17 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Category</label>
-                <select value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20">
-                  <option value="">Select Category</option>
-                  {Array.isArray(categories) && categories.map((cat) => (<option key={cat.id} value={cat.id}>{cat.name}</option>))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Product Image</label>
+                <label className={labelCls}>Product Image</label>
                 <div className="flex items-center gap-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   {imagePreview && <img src={imagePreview} alt="Preview" className="w-14 h-14 rounded-xl object-cover border border-pink-200" />}
                   <input type="file" accept="image/*" onChange={handleImageChange} className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-pink-50 file:text-pink-700 hover:file:bg-pink-100 cursor-pointer" />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Description</label>
-                <textarea rows={3} placeholder="Flavor profile or ingredients..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/25 resize-none" />
+                <label className={labelCls}>Description</label>
+                <textarea rows={3} placeholder="Flavor profile or ingredients..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={`${inputCls} resize-none`} />
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -420,24 +467,24 @@ export default function AdminProductsPage() {
               {categoryViewMode === "add" ? (
                 <form onSubmit={handleCategorySubmit} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Category Name</label>
+                    <label className={labelCls}>Category Name</label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. Sundaes, Cones..."
                       value={categoryName}
                       onChange={(e) => setCategoryName(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20"
+                      className={inputCls}
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">Description (Optional)</label>
+                    <label className={labelCls}>Description (Optional)</label>
                     <textarea
                       rows={2}
                       placeholder="Category details..."
                       value={categoryDesc}
                       onChange={(e) => setCategoryDesc(e.target.value)}
-                      className="w-full px-3.5 py-2.5 text-sm border border-pink-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 bg-pink-50/20 resize-none"
+                      className={`${inputCls} resize-none`}
                     />
                   </div>
                   <div className="flex justify-end gap-3 pt-2">

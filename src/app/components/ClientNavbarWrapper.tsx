@@ -2,17 +2,20 @@
 
 import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
+import CartDrawer from "./CartDrawer";
 
+// Shows the customer navbar + cart drawer everywhere except the admin area.
 export default function ClientNavbarWrapper() {
   const pathname = usePathname();
-  
+
   if (pathname.startsWith("/admin")) {
     return null;
   }
 
   return (
-    <div className="pt-24"> {/* This pushes content down on non-admin/non-login pages */}
-      <Navbar/>
-    </div>
+    <>
+      <Navbar />
+      <CartDrawer />
+    </>
   );
 }

@@ -9,7 +9,6 @@ export async function POST(request: Request) {
     const email = body?.email?.trim().toLowerCase();
     const password = body?.password;
     const phone = body?.phone?.trim() || null;
-    const branch_id = body?.branch_id || null;
 
     // 1. Validate required fields
     if (!name || !email || !password) {
@@ -18,56 +17,46 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (password.length < 6) {
+      return NextResponse.json(
+        { error: "Password must be at least 6 characters." },
+        { status: 400 }
+      );
+    }
 
-    // 2. Check if user already exists with this email
-    // Note: If your @/lib/db helper returns an object like { rows: [...] }, 
-    // make sure to change 'existingUsers' to 'existingUsers.rows' depending on your setup.
-    const existingUsers = await query("SELECT id FROM users WHERE email = $1", [email]);
-    
-    // Safety check for standard pg pool vs custom helper wrappers
-    const userRows = Array.isArray(existingUsers) ? existingUsers : existingUsers?.rows || [];
-
-    if (userRows.length > 0) {
+    // 2. Check if the email is already used
+    const existing: any = await query("SELECT id FROM users WHERE email = $1", [email]);
+    const existingRows = Array.isArray(existing) ? existing : existing?.rows || [];
+    if (existingRows.length > 0) {
       return NextResponse.json(
         { error: "An account with this email already exists." },
         { status: 409 }
       );
     }
 
-    // 3. Hash the password securely using bcrypt
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
+    // 3. Hash the password
+    const password_hash = await bcrypt.hash(password, 10);
 
-    // 4. Default public signups to the 'user' role and 'active' status
-    const role = "user";
-    const status = "active";
-
-    // 5. Insert into the database including phone and return safe user data
-    const result = await query(
-      `INSERT INTO users (name, email, phone, password_hash, role, branch_id, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) 
-       RETURNING id, name, email, phone, role, branch_id, status, created_at`,
-      [name, email, phone, password_hash, role, branch_id, status]
+    // 4. Public signups are always 'user' + 'active' (no branch link on users)
+    const result: any = await query(
+      `INSERT INTO users (name, email, phone, password_hash, role, status)
+       VALUES ($1, $2, $3, $4, 'user', 'active')
+       RETURNING id, name, email, phone, role, status, created_at`,
+      [name, email, phone, password_hash]
     );
 
-    const insertedRows = Array.isArray(result) ? result : result?.rows || [];
-    const newUser = insertedRows[0];
-
+    const rows = Array.isArray(result) ? result : result?.rows || [];
     return NextResponse.json(
-      { 
-        success: true, 
-        message: "Account created successfully!",
-        user: newUser 
-      },
+      { success: true, message: "Account created successfully!", user: rows[0] },
       { status: 201 }
     );
-
   } catch (error: any) {
-    // Detailed error logging to see the exact cause in your terminal console
-    console.error("Signup API internal error details:", error.message || error);
-    return NextResponse.json(
-      { error: error.message || "Internal server error. Please try again later." },
-      { status: 500 }
-    );
+    console.error("Signup API error:", error?.message || error);
+    // While developing, show the real cause in the browser too
+    const message =
+      process.env.NODE_ENV !== "production"
+        ? `Signup failed: ${error?.message || "unknown error"}`
+        : "Internal server error. Please try again later.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

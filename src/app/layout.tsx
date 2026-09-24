@@ -1,33 +1,35 @@
-import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Nunito, Fredoka } from "next/font/google";
 import "./globals.css";
-import ClientNavbarWrapper from "./components/ClientNavbarWrapper"; // or conditionally check
+import { CartProvider } from "./components/CartProvider";
+import ClientNavbarWrapper from "./components/ClientNavbarWrapper";
+import Footer from "./components/Footer";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-});
-
-const display = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-display",
-});
+// Body text: Nunito (soft, rounded, easy to read on phones)
+// Headings / brand: Fredoka (playful, fits an ice cream shop)
+// To try another font, change the two lines below (e.g. Poppins, DM_Sans, Baloo_2, Quicksand).
+const sans = Nunito({ subsets: ["latin"], variable: "--font-sans" });
+const display = Fredoka({ subsets: ["latin"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "IceBar - Ice Cream Parlour",
+  title: "SweetIce - Ice Cream Parlour",
   description: "Delivering sweet treats to your door",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${display.variable}`}>
-      <body className="font-sans antialiased bg-gradient-to-b from-pink-50/50 via-white to-pink-50/30 text-gray-900">
-        <ClientNavbarWrapper />
-        <main>{children}</main>
+    <html lang="en" className={`${sans.variable} ${display.variable}`}>
+      <body className="font-sans antialiased min-h-screen bg-gradient-to-b from-pink-50/50 via-white to-pink-50/30 text-gray-900 overflow-x-hidden">
+        <CartProvider>
+          <ClientNavbarWrapper />
+          <main className="w-full">{children}</main>
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );

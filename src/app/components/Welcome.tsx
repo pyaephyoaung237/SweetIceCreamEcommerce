@@ -6,7 +6,8 @@ export default function Welcome() {
       {/* Background Image with Dark & Pink Gradient Overlay */}
       <div className="absolute inset-0 z-0">
         <img 
-          src="https://images.unsplash.com/photo-1501443762994-82bd5dace89a?auto=format&fit=crop&w=1200&q=80" 
+          // Replace '/images/your-ice-cream.jpg' with the actual path of your image inside the public folder
+          src="/images/your-ice-cream.jpg" 
           alt="Delicious Ice Cream Background" 
           className="w-full h-full object-cover object-center opacity-65 scale-105 transition duration-700"
         />
@@ -15,9 +16,7 @@ export default function Welcome() {
 
       {/* Content Area */}
       <div className="relative z-10 p-6 md:p-12 max-w-xl text-white flex flex-col items-start gap-4">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-pink-500/30 border border-pink-400/30 text-pink-200 text-xs font-semibold backdrop-blur-md">
-            Welcome to SweetIce
-        </span>
+      
         <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight leading-tight">
           Crafting Happiness, One Scoop at a Time.
         </h1>
